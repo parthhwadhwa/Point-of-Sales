@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 // Simple in-memory rate limiting (per server instance)
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 10000; // 10 seconds
+const MIN_REQUEST_INTERVAL = 1000; // 1 second (relaxed for testing)
 
 export async function GET(request: Request) {
     try {
@@ -18,6 +19,8 @@ export async function GET(request: Request) {
         }
 
         // Basic Rate Limiting
+        // Removed for development to prevent issues with React Strict Mode double-invocation
+        /*
         const now = Date.now();
         if (now - lastRequestTime < MIN_REQUEST_INTERVAL) {
             return NextResponse.json(
@@ -26,6 +29,7 @@ export async function GET(request: Request) {
             );
         }
         lastRequestTime = now;
+        */
 
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
@@ -87,7 +91,12 @@ export async function GET(request: Request) {
 
         // 3. Construct Prompt
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        // Use gemini-1.5-flash as it is the most stable and cost-effective model for this use case
+        const modelsToTry = ["gemini-1.5-flash"];
+        let model = null;
+        let result = null;
+        let lastError = null;
 
         const prompt = `
         Analyze this POS system sales data and provide business insights in STRICT JSON format.
@@ -102,20 +111,37 @@ export async function GET(request: Request) {
         Required JSON Structure:
         {
           "bestSelling": [{ "name": string, "totalSold": number, "revenue": number }],
-          "slowMoving": [{ "name": string, "totalSold": number, "stock": number }], // Infer based on low/zero sales
+          "slowMoving": [{ "name": string, "totalSold": number, "stock": number }],
           "restock": [{ "name": string, "stock": number, "avgDailySales": number, "daysUntilOut": number }],
           "summary": "A concise, actionable business summary (max 2 sentences). Mention key trends and urgent actions."
         }
 
         Rules:
         - "bestSelling": Top 3 performing products.
-        - "slowMoving": Identify products with low sales but high stock (you may need to infer this if not explicitly in top list, or just return empty if insufficient data).
-        - "restock": Prioritize low stock items with high sales velocity. Calculate daysUntilOut based on sales.
+        - "slowMoving": Identify products with low sales but high stock.
+        - "restock": Prioritize low stock items with high sales velocity.
         - Output ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
         `;
 
-        // 4. Call AI
-        const result = await model.generateContent(prompt);
+        // 4. Call AI with Fallback
+        for (const modelName of modelsToTry) {
+            try {
+                console.log(`Attempting to generate insights using model: ${modelName}`);
+                model = genAI.getGenerativeModel({ model: modelName });
+                result = await model.generateContent(prompt);
+                break; // If successful, exit loop
+            } catch (error) {
+                console.warn(`Failed with model ${modelName}:`, error);
+                lastError = error;
+                // Continue to next model
+            }
+        }
+
+        if (!result) {
+            console.error("All models failed. Last error:", lastError);
+            throw lastError || new Error("Failed to generate content with available models");
+        }
+
         const response = await result.response;
         const text = response.text();
 
@@ -141,7 +167,10 @@ export async function GET(request: Request) {
     } catch (error) {
         console.error("AI Insights error:", error);
         return NextResponse.json(
-            { error: "Failed to generate insights" },
+            {
+                error: "Failed to generate insights.",
+                details: error instanceof Error ? error.message : "Unknown error"
+            },
             { status: 500 }
         );
     }

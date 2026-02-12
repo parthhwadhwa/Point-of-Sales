@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link"; // Import Link for navigation
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 export default function SignupPage() {
     const [name, setName] = useState("");
@@ -11,6 +12,7 @@ export default function SignupPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const isMobile = useMediaQuery("(max-width: 480px)");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,7 +45,7 @@ export default function SignupPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 background: "var(--bg-secondary)",
-                padding: 20,
+                padding: isMobile ? 16 : 20,
             }}
         >
             <div
@@ -54,7 +56,7 @@ export default function SignupPage() {
                 }}
             >
                 {/* Logo */}
-                <div style={{ textAlign: "center", marginBottom: 40 }}>
+                <div style={{ textAlign: "center", marginBottom: isMobile ? 32 : 40 }}>
                     <div
                         style={{
                             width: 64,
@@ -92,7 +94,7 @@ export default function SignupPage() {
                     style={{
                         background: "var(--bg-card)",
                         borderRadius: 20,
-                        padding: "36px 32px",
+                        padding: isMobile ? "24px 20px" : "36px 32px",
                         boxShadow: "var(--shadow-sm)",
                         border: "1px solid var(--border)",
                     }}

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
             orderBy: { createdAt: "desc" },
         });
 
-        const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+        const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total), 0);
         const orderCount = orders.length;
         const avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
 
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         for (const order of orders) {
             const hour = new Date(order.createdAt).getHours();
             const hourLabel = `${hour.toString().padStart(2, "0")}:00`;
-            salesByHour[hourLabel].revenue += order.total;
+            salesByHour[hourLabel].revenue += Number(order.total);
             salesByHour[hourLabel].orders += 1;
         }
 
@@ -62,7 +62,15 @@ export async function GET(request: NextRequest) {
         }));
 
         // Recent orders (last 10)
-        const recentOrders = orders.slice(0, 10);
+        const recentOrders = orders.slice(0, 10).map((order) => ({
+            ...order,
+            total: Number(order.total),
+            items: order.items.map((item) => ({
+                ...item,
+                unitPrice: Number(item.unitPrice),
+                total: Number(item.total),
+            })),
+        }));
 
         return NextResponse.json({
             totalRevenue: Math.round(totalRevenue * 100) / 100,

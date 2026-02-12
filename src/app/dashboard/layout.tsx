@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
 
     useEffect(() => {
-        fetch("/api/auth/me")
+        fetch("/api/auth/me", { cache: "no-store" })
             .then((r) => r.json())
             .then((data) => {
                 if (data.user) {

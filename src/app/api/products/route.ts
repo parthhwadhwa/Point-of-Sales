@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
         const where: Record<string, unknown> = {};
         if (search) {
-            where.name = { contains: search };
+            where.name = { contains: search, mode: "insensitive" as const };
         }
         if (categoryId) {
             where.categoryId = categoryId;
@@ -28,7 +28,12 @@ export async function GET(request: NextRequest) {
             orderBy: { name: "asc" },
         });
 
-        return NextResponse.json(products);
+        const safeProducts = products.map((p) => ({
+            ...p,
+            price: Number(p.price),
+        }));
+
+        return NextResponse.json(safeProducts);
     } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }

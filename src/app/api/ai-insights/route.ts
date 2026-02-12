@@ -30,7 +30,7 @@ export async function GET() {
                 productSales[pid] = { name: item.product.name, totalSold: 0, revenue: 0 };
             }
             productSales[pid].totalSold += item.quantity;
-            productSales[pid].revenue += item.total;
+            productSales[pid].revenue += Number(item.total);
         }
 
         const bestSelling = Object.values(productSales)
@@ -68,8 +68,8 @@ export async function GET() {
             },
         });
 
-        const thisWeekRevenue = thisWeekOrders.reduce((sum, o) => sum + o.total, 0);
-        const lastWeekRevenue = lastWeekOrders.reduce((sum, o) => sum + o.total, 0);
+        const thisWeekRevenue = thisWeekOrders.reduce((sum, o) => sum + Number(o.total), 0);
+        const lastWeekRevenue = lastWeekOrders.reduce((sum, o) => sum + Number(o.total), 0);
 
         const revenueGrowth =
             lastWeekRevenue > 0
@@ -118,8 +118,8 @@ export async function GET() {
         }
 
         const summary = `Your store has ${totalProducts} products with ${totalOrdersThisWeek} orders this week generating $${Math.round(thisWeekRevenue * 100) / 100} in revenue. ${trendText} ${lowStockCount} product(s) need restocking soon.${bestSelling.length > 0
-                ? ` Top seller: ${bestSelling[0].name} with ${bestSelling[0].totalSold} units sold.`
-                : ""
+            ? ` Top seller: ${bestSelling[0].name} with ${bestSelling[0].totalSold} units sold.`
+            : ""
             }`;
 
         return NextResponse.json({

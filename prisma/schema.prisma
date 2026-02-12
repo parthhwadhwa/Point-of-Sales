@@ -3,30 +3,49 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ───────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  CASHIER
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+}
+
+// ─── Models ──────────────────────────────────────────────
+
 model User {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
+  name      String
   email     String   @unique
   password  String
-  name      String
-  role      String   @default("CASHIER")
+  role      Role     @default(CASHIER)
   orders    Order[]
   createdAt DateTime @default(now())
+
+  @@map("users")
 }
 
 model Category {
-  id       String    @id @default(cuid())
+  id       String    @id @default(uuid())
   name     String    @unique
   products Product[]
+
+  @@map("categories")
 }
 
 model Product {
-  id         String      @id @default(cuid())
+  id         String      @id @default(uuid())
   name       String
-  price      Float
+  price      Decimal     @db.Decimal(10, 2)
   stock      Int
   barcode    String?     @unique
   categoryId String
@@ -34,29 +53,41 @@ model Product {
   orderItems OrderItem[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+
+  @@index([categoryId])
+  @@index([name])
+  @@map("products")
 }
 
 model Order {
-  id            String      @id @default(cuid())
-  orderNumber   String      @unique
+  id            String        @id @default(uuid())
+  orderNumber   String        @unique
   items         OrderItem[]
-  subtotal      Float
-  tax           Float
-  discount      Float
-  total         Float
-  paymentMethod String      @default("CASH")
+  subtotal      Decimal       @db.Decimal(10, 2)
+  tax           Decimal       @db.Decimal(10, 2)
+  discount      Decimal       @db.Decimal(10, 2)
+  total         Decimal       @db.Decimal(10, 2)
+  paymentMethod PaymentMethod @default(CASH)
   cashierId     String
-  cashier       User        @relation(fields: [cashierId], references: [id])
-  createdAt     DateTime    @default(now())
+  cashier       User          @relation(fields: [cashierId], references: [id])
+  createdAt     DateTime      @default(now())
+
+  @@index([cashierId])
+  @@index([createdAt])
+  @@map("orders")
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
+  id        String  @id @default(uuid())
   orderId   String
-  order     Order   @relation(fields: [orderId], references: [id])
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
-  unitPrice Float
-  total     Float
+  unitPrice Decimal @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
 }

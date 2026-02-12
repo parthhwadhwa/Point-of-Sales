@@ -1,36 +1,37 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-    // Create admin user
+    console.log("🌱 Seeding database...\n");
+
+    // ─── Users ───────────────────────────────────────────
     const adminPassword = await bcrypt.hash("admin123", 12);
-    await prisma.user.upsert({
+    const admin = await prisma.user.upsert({
         where: { email: "admin@pos.com" },
         update: {},
         create: {
             email: "admin@pos.com",
             password: adminPassword,
             name: "Admin User",
-            role: "ADMIN",
+            role: Role.ADMIN,
         },
     });
 
-    // Create cashier user
     const cashierPassword = await bcrypt.hash("cashier123", 12);
-    await prisma.user.upsert({
+    const cashier = await prisma.user.upsert({
         where: { email: "cashier@pos.com" },
         update: {},
         create: {
             email: "cashier@pos.com",
             password: cashierPassword,
             name: "Jane Cashier",
-            role: "CASHIER",
+            role: Role.CASHIER,
         },
     });
 
-    // Create categories
+    // ─── Categories ──────────────────────────────────────
     const categories = await Promise.all([
         prisma.category.upsert({ where: { name: "Smartphones" }, update: {}, create: { name: "Smartphones" } }),
         prisma.category.upsert({ where: { name: "Laptops" }, update: {}, create: { name: "Laptops" } }),
@@ -41,7 +42,7 @@ async function main() {
 
     const [smartphones, laptops, audio, accessories, wearables] = categories;
 
-    // Create products
+    // ─── Products ────────────────────────────────────────
     const products = [
         // Smartphones
         { name: "iPhone 16 Pro", price: 999.99, stock: 25, barcode: "8800000001", categoryId: smartphones.id },
@@ -50,7 +51,7 @@ async function main() {
         { name: "Google Pixel 9 Pro", price: 849.99, stock: 20, barcode: "8800000004", categoryId: smartphones.id },
         // Laptops
         { name: "MacBook Air M3", price: 1099.99, stock: 15, barcode: "8800000005", categoryId: laptops.id },
-        { name: "MacBook Pro 14\" M3", price: 1599.99, stock: 10, barcode: "8800000006", categoryId: laptops.id },
+        { name: 'MacBook Pro 14" M3', price: 1599.99, stock: 10, barcode: "8800000006", categoryId: laptops.id },
         { name: "Dell XPS 15", price: 1299.99, stock: 12, barcode: "8800000007", categoryId: laptops.id },
         { name: "ThinkPad X1 Carbon", price: 1449.99, stock: 8, barcode: "8800000008", categoryId: laptops.id },
         // Audio
@@ -79,15 +80,15 @@ async function main() {
     }
 
     console.log("✅ Seed data created successfully!");
-    console.log(`   Admin: admin@pos.com / admin123`);
-    console.log(`   Cashier: cashier@pos.com / cashier123`);
+    console.log(`   Admin:    ${admin.email} / admin123`);
+    console.log(`   Cashier:  ${cashier.email} / cashier123`);
     console.log(`   Categories: ${categories.length}`);
     console.log(`   Products: ${products.length}`);
 }
 
 main()
     .catch((e) => {
-        console.error(e);
+        console.error("❌ Seed failed:", e);
         process.exit(1);
     })
     .finally(async () => {

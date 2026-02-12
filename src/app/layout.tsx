@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeScript } from "@/components/ThemeScript";
 
 export const metadata: Metadata = {
   title: "SwiftPOS — Tech Store",
@@ -21,6 +22,7 @@ export default function RootLayout({
         />
       </head>
       <body style={{ fontFamily: "'Inter', -apple-system, 'SF Pro Display', 'Helvetica Neue', system-ui, sans-serif" }}>
+        <ThemeScript />
         <ThemeProvider>
           {children}
         </ThemeProvider>

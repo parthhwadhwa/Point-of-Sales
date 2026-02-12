@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+@theme {
+  --color-sidebar: var(--bg-sidebar);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-card: var(--bg-card);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-card: var(--bg-card);
+}
+
 /* ═══════════════════════════════════════════
    Apple-Inspired Design System — SwiftPOS
    ═══════════════════════════════════════════ */

@@ -21,14 +21,14 @@ const navItems = [
     { href: "/dashboard/insights", label: "AI Insights", icon: "✨", roles: ["ADMIN"] },
 ];
 
-export default function Sidebar({
+const Sidebar = ({
     user,
     isMobile,
     isMobileOpen,
     setMobileOpen,
     collapsed,
     setCollapsed,
-}: SidebarProps) {
+}: SidebarProps) => {
     const pathname = usePathname();
     const router = useRouter();
     const { theme, toggleTheme } = useTheme();
@@ -69,59 +69,29 @@ export default function Sidebar({
                 />
             )}
 
+            {/* Sidebar Container */}
             <aside
-                style={{
-                    width: collapsed && !isMobile ? 72 : 260,
-                    minHeight: "100vh",
-                    background: "var(--bg-sidebar)",
-                    borderRight: "1px solid var(--border)",
-                    display: "flex",
-                    flexDirection: "column",
-                    transition: "width 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)",
-                    position: "fixed",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    zIndex: 50,
-                    overflow: "hidden",
-                    // Mobile specific styles
-                    transform: isMobile && !isMobileOpen ? "translateX(-100%)" : "translateX(0)",
-                    boxShadow: isMobile && isMobileOpen ? "0 0 40px rgba(0,0,0,0.2)" : "none",
-                }}
+                className={`
+                    fixed top-0 left-0 z-50 h-screen border-r border-border/50 bg-sidebar/80 backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+                    w-[260px] ${collapsed ? "md:w-[72px]" : "md:w-[260px]"}
+                    ${isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0 md:shadow-none"}
+                    flex flex-col overflow-hidden supports-[backdrop-filter]:bg-sidebar/60
+                `}
             >
                 {/* Logo / Brand */}
                 <div
-                    style={{
-                        padding: collapsed && !isMobile ? "24px 16px" : "24px 24px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        borderBottom: "1px solid var(--border)",
-                    }}
+                    className={`flex items-center gap-3 ${collapsed && !isMobile ? "p-6 px-4 justify-center" : "p-6"}`}
                 >
                     <div
-                        style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 12,
-                            background: "linear-gradient(135deg, #0071e3, #5ac8fa)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 18,
-                            flexShrink: 0,
-                        }}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-text-inverse shadow-sm"
                     >
-                        ⚡
+                        <span className="text-lg">⚡</span>
                     </div>
                     {(!collapsed || isMobile) && (
-                        <div>
-                            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
+                        <div className="flex flex-col">
+                            <span className="text-[15px] font-semibold text-text-primary leading-tight tracking-tight">
                                 SwiftPOS
-                            </div>
-                            <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>
-                                Tech Store
-                            </div>
+                            </span>
                         </div>
                     )}
 
@@ -129,14 +99,7 @@ export default function Sidebar({
                     {isMobile && (
                         <button
                             onClick={() => setMobileOpen(false)}
-                            style={{
-                                marginLeft: "auto",
-                                background: "transparent",
-                                border: "none",
-                                fontSize: 24,
-                                color: "var(--text-tertiary)",
-                                cursor: "pointer",
-                            }}
+                            className="ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-bg-tertiary text-text-secondary hover:bg-bg-hover transition-colors"
                         >
                             ✕
                         </button>
@@ -147,65 +110,31 @@ export default function Sidebar({
                 {!isMobile && (
                     <button
                         onClick={() => setCollapsed(!collapsed)}
-                        style={{
-                            margin: "12px auto",
-                            width: 32,
-                            height: 32,
-                            borderRadius: 8,
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "var(--text-tertiary)",
-                            fontSize: 16,
-                            transition: "background 0.15s",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        className="my-3 mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-hover"
                     >
                         {collapsed ? "→" : "←"}
                     </button>
                 )}
 
                 {/* Navigation */}
-                <nav style={{ flex: 1, padding: collapsed && !isMobile ? "0 10px" : "0 12px" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <nav className={`flex-1 ${collapsed && !isMobile ? "px-2.5" : "px-3"}`}>
+                    <div className="flex flex-col gap-0.5">
                         {filteredNav.map((item) => {
                             const isActive = pathname === item.href;
                             return (
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 12,
-                                        padding: collapsed && !isMobile ? "12px 14px" : "10px 16px",
-                                        borderRadius: 12,
-                                        textDecoration: "none",
-                                        fontSize: 15,
-                                        fontWeight: isActive ? 600 : 500,
-                                        color: isActive ? "var(--accent)" : "var(--text-secondary)",
-                                        background: isActive ? "var(--accent-light)" : "transparent",
-                                        transition: "all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)",
-                                        justifyContent: collapsed && !isMobile ? "center" : "flex-start",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isActive) {
-                                            e.currentTarget.style.background = "var(--bg-hover)";
-                                            e.currentTarget.style.color = "var(--text-primary)";
+                                    className={`
+                                        flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-all duration-200 ease-out
+                                        ${collapsed && !isMobile ? "justify-center px-2" : "justify-start"}
+                                        ${isActive
+                                            ? "bg-text-primary/5 text-text-primary font-medium"
+                                            : "text-text-secondary hover:bg-text-primary/5 hover:text-text-primary"
                                         }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isActive) {
-                                            e.currentTarget.style.background = "transparent";
-                                            e.currentTarget.style.color = "var(--text-secondary)";
-                                        }
-                                    }}
+                                    `}
                                 >
-                                    <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
+                                    <span className="text-lg opacity-80">{item.icon}</span>
                                     {(!collapsed || isMobile) && <span>{item.label}</span>}
                                 </Link>
                             );
@@ -215,119 +144,58 @@ export default function Sidebar({
 
                 {/* Theme Toggle + User Info */}
                 <div
-                    style={{
-                        padding: collapsed && !isMobile ? "16px 10px" : "16px 16px",
-                        borderTop: "1px solid var(--border)",
-                    }}
+                    className={`mt-auto flex flex-col gap-1 ${collapsed && !isMobile ? "p-4 px-2" : "p-4"}`}
                 >
                     {/* Theme Toggle */}
                     <button
                         onClick={toggleTheme}
-                        style={{
-                            width: "100%",
-                            padding: "10px 16px",
-                            background: "var(--bg-tertiary)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 12,
-                            color: "var(--text-secondary)",
-                            fontSize: 14,
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 8,
-                            marginBottom: 12,
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "var(--bg-hover)";
-                            e.currentTarget.style.color = "var(--text-primary)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "var(--bg-tertiary)";
-                            e.currentTarget.style.color = "var(--text-secondary)";
-                        }}
+                        className={`
+                            flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[14px] font-medium text-text-secondary transition-all duration-200 hover:bg-text-primary/5 hover:text-text-primary
+                            ${collapsed && !isMobile ? "justify-center" : "justify-start"}
+                        `}
                     >
-                        {(collapsed && !isMobile) ? (theme === "dark" ? "☀️" : "🌙") : (theme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode")}
+                        <span className="text-lg">{theme === "dark" ? "☀️" : "🌙"}</span>
+                        {(!collapsed || isMobile) && <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}
                     </button>
 
-                    {user && (
-                        <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                            marginBottom: 12,
-                            justifyContent: collapsed && !isMobile ? "center" : "flex-start",
-                        }}>
-                            <div
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: "50%",
-                                    background: "linear-gradient(135deg, #0071e3, #5ac8fa)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: "white",
-                                    fontSize: 14,
-                                    fontWeight: 700,
-                                    flexShrink: 0,
-                                }}
-                            >
-                                {user.name.charAt(0)}
-                            </div>
-                            {(!collapsed || isMobile) && (
-                                <div>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-                                        {user.name}
-                                    </div>
-                                    <div
-                                        style={{
-                                            fontSize: 11,
-                                            fontWeight: 600,
-                                            color: "var(--accent)",
-                                            textTransform: "uppercase",
-                                            letterSpacing: "0.04em",
-                                        }}
-                                    >
-                                        {user.role}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
                     <button
                         onClick={handleLogout}
-                        style={{
-                            width: "100%",
-                            padding: "10px 16px",
-                            background: "transparent",
-                            border: "1px solid var(--border)",
-                            borderRadius: 12,
-                            color: "var(--text-secondary)",
-                            fontSize: 14,
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 8,
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "var(--bg-hover)";
-                            e.currentTarget.style.color = "var(--text-primary)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "transparent";
-                            e.currentTarget.style.color = "var(--text-secondary)";
-                        }}
+                        className={`
+                            flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[14px] font-medium text-text-secondary transition-all duration-200 hover:bg-text-primary/5 hover:text-text-primary
+                            ${collapsed && !isMobile ? "justify-center" : "justify-start"}
+                        `}
                     >
-                        {(collapsed && !isMobile) ? "↪" : "Sign Out"}
+                        <span className="text-lg">↪</span>
+                        {(!collapsed || isMobile) && <span>Sign Out</span>}
                     </button>
+
+                    {user && !collapsed && !isMobile && (
+                        <div className="mt-4 flex items-center gap-3 px-2 pt-4 border-t border-border/50">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0071e3] to-[#5ac8fa] text-xs font-bold text-white shadow-sm">
+                                {user.name.charAt(0)}
+                            </div>
+                            <div className="flex flex-col overflow-hidden">
+                                <span className="truncate text-xs font-semibold text-text-primary">
+                                    {user.name}
+                                </span>
+                                <span className="truncate text-[10px] uppercase font-medium text-text-tertiary">
+                                    {user.role}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {user && collapsed && !isMobile && (
+                        <div className="mt-2 flex justify-center pt-2 border-t border-border/50">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0071e3] to-[#5ac8fa] text-xs font-bold text-white shadow-sm">
+                                {user.name.charAt(0)}
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </aside>
+            </aside >
         </>
     );
 }
+
+export default Sidebar;

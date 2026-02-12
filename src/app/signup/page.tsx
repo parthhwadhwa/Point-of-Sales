@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "next/link"; // Import Link for navigation
 
-export default function LoginPage() {
+export default function SignupPage() {
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -16,16 +17,16 @@ export default function LoginPage() {
         setError("");
         setLoading(true);
         try {
-            const res = await fetch("/api/auth/login", {
+            const res = await fetch("/api/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ name, email, password }),
             });
             const data = await res.json();
             if (!res.ok) {
-                setError(data.error || "Invalid credentials");
+                setError(data.error || "Sign up failed");
             } else {
-                router.push("/dashboard/pos");
+                router.push("/login?signup=success"); // Redirect to login with success message
             }
         } catch {
             setError("Something went wrong");
@@ -82,7 +83,7 @@ export default function LoginPage() {
                         SwiftPOS
                     </h1>
                     <p style={{ color: "var(--text-tertiary)", fontSize: 15, fontWeight: 400 }}>
-                        Sign in to your tech store
+                        Create your account
                     </p>
                 </div>
 
@@ -112,6 +113,28 @@ export default function LoginPage() {
                                 {error}
                             </div>
                         )}
+
+                        <div style={{ marginBottom: 20 }}>
+                            <label
+                                style={{
+                                    display: "block",
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    color: "var(--text-primary)",
+                                    marginBottom: 8,
+                                }}
+                            >
+                                Full Name
+                            </label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="John Doe"
+                                required
+                                className="input"
+                            />
+                        </div>
 
                         <div style={{ marginBottom: 20 }}>
                             <label
@@ -174,38 +197,18 @@ export default function LoginPage() {
                                 letterSpacing: "-0.01em",
                             }}
                         >
-                            {loading ? "Signing in..." : "Sign In"}
+                            {loading ? "Creating Account..." : "Sign Up"}
                         </button>
                     </form>
 
                     <div style={{ marginTop: 24, textAlign: "center" }}>
                         <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-                            Don't have an account?{" "}
-                            <Link href="/signup" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none" }}>
-                                Sign Up
+                            Already have an account?{" "}
+                            <Link href="/login" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none" }}>
+                                Sign In
                             </Link>
                         </p>
                     </div>
-                </div>
-
-                {/* Demo Credentials */}
-                <div
-                    style={{
-                        marginTop: 20,
-                        background: "var(--accent-light)",
-                        borderRadius: 16,
-                        padding: "16px 20px",
-                        border: "1px solid var(--accent-soft)",
-                    }}
-                >
-                    <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", marginBottom: 8 }}>
-                        Demo Credentials
-                    </p>
-                    <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                        <strong style={{ color: "var(--text-primary)" }}>Admin:</strong> admin@pos.com / admin123
-                        <br />
-                        <strong style={{ color: "var(--text-primary)" }}>Cashier:</strong> cashier@pos.com / cashier123
-                    </p>
                 </div>
             </div>
         </div>

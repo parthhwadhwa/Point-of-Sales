@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatCurrency } from "@/lib/utils";
 
 interface Product {
     id: string;
@@ -175,7 +176,7 @@ export default function InventoryPage() {
                                 <td>
                                     <span className="badge badge-blue">{p.category.name}</span>
                                 </td>
-                                <td style={{ fontWeight: 600 }}>${p.price.toFixed(2)}</td>
+                                <td style={{ fontWeight: 600 }}>{formatCurrency(p.price)}</td>
                                 <td>
                                     {p.stock < 10 ? (
                                         <span className="badge badge-orange">Low: {p.stock}</span>

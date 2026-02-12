@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { formatCurrency } from "@/lib/utils";
 
 interface Product {
     id: string;
@@ -209,7 +210,7 @@ export default function POSPage() {
                                         {item.name}
                                     </div>
                                     <div style={{ fontSize: 13, color: "var(--text-tertiary)", marginTop: 2 }}>
-                                        ${item.price.toFixed(2)} each
+                                        {formatCurrency(item.price)} each
                                     </div>
                                 </div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -254,7 +255,7 @@ export default function POSPage() {
                                     </button>
                                 </div>
                                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", minWidth: 60, textAlign: "right" }}>
-                                    ${(item.price * item.quantity).toFixed(2)}
+                                    {formatCurrency(item.price * item.quantity)}
                                 </div>
                                 <button
                                     onClick={() => removeItem(item.id)}
@@ -280,7 +281,7 @@ export default function POSPage() {
             {cart.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
                     <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-tertiary)", display: "block", marginBottom: 6 }}>
-                        Discount ($)
+                        Discount ({formatCurrency(0).charAt(0)})
                     </label>
                     <input
                         type="number"
@@ -304,16 +305,16 @@ export default function POSPage() {
             >
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                     <span style={{ color: "var(--text-tertiary)", fontSize: 14 }}>Subtotal</span>
-                    <span style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 500 }}>${subtotal.toFixed(2)}</span>
+                    <span style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 500 }}>{formatCurrency(subtotal)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                     <span style={{ color: "var(--text-tertiary)", fontSize: 14 }}>Tax (10%)</span>
-                    <span style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 500 }}>${tax.toFixed(2)}</span>
+                    <span style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 500 }}>{formatCurrency(tax)}</span>
                 </div>
                 {discount > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                         <span style={{ color: "var(--success)", fontSize: 14 }}>Discount</span>
-                        <span style={{ color: "var(--success)", fontSize: 14, fontWeight: 500 }}>−${discount.toFixed(2)}</span>
+                        <span style={{ color: "var(--success)", fontSize: 14, fontWeight: 500 }}>−{formatCurrency(discount)}</span>
                     </div>
                 )}
                 <div
@@ -327,7 +328,7 @@ export default function POSPage() {
                 >
                     <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Total</span>
                     <span style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
-                        ${total.toFixed(2)}
+                        {formatCurrency(total)}
                     </span>
                 </div>
             </div>
@@ -351,7 +352,7 @@ export default function POSPage() {
                     letterSpacing: "-0.01em",
                 }}
             >
-                {checkingOut ? "Processing..." : `Checkout — $${total.toFixed(2)}`}
+                {checkingOut ? "Processing..." : `Checkout — ${formatCurrency(total)}`}
             </button>
         </div>
     );
@@ -488,7 +489,7 @@ export default function POSPage() {
                                     }}
                                 >
                                     <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
-                                        ${product.price.toFixed(2)}
+                                        {formatCurrency(product.price)}
                                     </span>
                                     <span
                                         style={{
@@ -528,7 +529,7 @@ export default function POSPage() {
                         }}>
                             <div>
                                 <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 600 }}>Total</div>
-                                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>${total.toFixed(2)}</div>
+                                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>{formatCurrency(total)}</div>
                             </div>
                             <button
                                 onClick={() => setCartOpen(true)}
@@ -618,7 +619,7 @@ export default function POSPage() {
                             {receipt.orderNumber}
                         </p>
                         <p style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)", marginBottom: 24 }}>
-                            ${receipt.total.toFixed(2)}
+                            {formatCurrency(receipt.total)}
                         </p>
                         <button
                             onClick={() => setReceipt(null)}

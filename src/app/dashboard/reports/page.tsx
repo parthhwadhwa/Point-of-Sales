@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { formatCurrency } from "@/lib/utils";
 
 interface ReportData {
     totalRevenue: number;
@@ -37,9 +38,9 @@ export default function ReportsPage() {
     }
 
     const statCards = [
-        { label: "Total Revenue", value: `$${data.totalRevenue.toFixed(2)}`, icon: "💰" },
+        { label: "Total Revenue", value: formatCurrency(data.totalRevenue), icon: "💰" },
         { label: "Total Orders", value: data.orderCount.toString(), icon: "📋" },
-        { label: "Avg. Order Value", value: `$${data.avgOrderValue.toFixed(2)}`, icon: "📈" },
+        { label: "Avg. Order Value", value: formatCurrency(data.avgOrderValue), icon: "📈" },
     ];
 
     return (
@@ -177,7 +178,7 @@ export default function ReportsPage() {
                                 <td style={{ fontSize: 13, color: "var(--text-secondary)", maxWidth: 300 }}>
                                     {order.items.map((i) => `${i.quantity}× ${i.product.name}`).join(", ")}
                                 </td>
-                                <td style={{ fontWeight: 700 }}>${order.total.toFixed(2)}</td>
+                                <td style={{ fontWeight: 700 }}>{formatCurrency(order.total)}</td>
                                 <td style={{ color: "var(--text-secondary)" }}>{order.cashier.name}</td>
                                 <td style={{ color: "var(--text-tertiary)", fontSize: 13 }}>
                                     {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

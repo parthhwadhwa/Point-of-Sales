@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatCurrency } from "@/lib/utils";
 
 interface AiInsights {
     bestSelling: { name: string; totalSold: number; revenue: number }[];
@@ -75,11 +76,11 @@ export default function InsightsPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 28 }}>
                 <div className="stat-card animate-in" style={{ animationDelay: "50ms" }}>
                     <div className="stat-label">📊 This Week</div>
-                    <div className="stat-value">${data.thisWeekRevenue.toFixed(2)}</div>
+                    <div className="stat-value">{formatCurrency(data.thisWeekRevenue)}</div>
                 </div>
                 <div className="stat-card animate-in" style={{ animationDelay: "100ms" }}>
                     <div className="stat-label">📅 Last Week</div>
-                    <div className="stat-value">${data.lastWeekRevenue.toFixed(2)}</div>
+                    <div className="stat-value">{formatCurrency(data.lastWeekRevenue)}</div>
                 </div>
                 <div className="stat-card animate-in" style={{ animationDelay: "150ms" }}>
                     <div className="stat-label">📈 Growth</div>
@@ -133,7 +134,7 @@ export default function InsightsPage() {
                                     </div>
                                 </div>
                                 <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
-                                    ${p.revenue.toFixed(2)}
+                                    {formatCurrency(p.revenue)}
                                 </span>
                             </div>
                         ))}

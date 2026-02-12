@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -120,7 +121,7 @@ export async function GET(request: Request) {
             trendText = "Revenue is stable compared to last week.";
         }
 
-        const summary = `Your store has ${totalProducts} products with ${totalOrdersThisWeek} orders this week generating $${Math.round(thisWeekRevenue * 100) / 100} in revenue. ${trendText} ${lowStockCount} product(s) need restocking soon.${bestSelling.length > 0
+        const summary = `Your store has ${totalProducts} products with ${totalOrdersThisWeek} orders this week generating ${formatCurrency(thisWeekRevenue)} in revenue. ${trendText} ${lowStockCount} product(s) need restocking soon.${bestSelling.length > 0
             ? ` Top seller: ${bestSelling[0].name} with ${bestSelling[0].totalSold} units sold.`
             : ""
             }`;

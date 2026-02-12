@@ -77,6 +77,7 @@ model Order {
   @@map("orders")
 }
 
+
 model OrderItem {
   id        String  @id @default(uuid())
   orderId   String
@@ -91,3 +92,12 @@ model OrderItem {
   @@index([productId])
   @@map("order_items")
 }
+
+model AIInsight {
+  id        String   @id @default(uuid())
+  content   Json
+  createdAt DateTime @default(now())
+
+  @@map("ai_insights")
+}
+

@@ -1,176 +1,169 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { formatCurrency } from "@/lib/utils";
+import { PrismaClient } from "@prisma/client";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+const prisma = new PrismaClient();
 
-// Simple in-memory rate limiting (per server instance)
-let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 1000; // 1 second (relaxed for testing)
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-export async function GET(request: Request) {
+export const dynamic = 'force-dynamic'; // Ensure this route is not statically optimized
+
+export async function GET(req: NextRequest) {
     try {
-        const user = await getAuthUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        // Basic Rate Limiting
-        // Removed for development to prevent issues with React Strict Mode double-invocation
-        /*
-        const now = Date.now();
-        if (now - lastRequestTime < MIN_REQUEST_INTERVAL) {
+        // 1. Validate Environment Variables
+        if (!process.env.GEMINI_API_KEY) {
             return NextResponse.json(
-                { error: "Too many requests. Please wait a moment." },
-                { status: 429 }
+                { error: "GEMINI_API_KEY is not set" },
+                { status: 500 }
             );
         }
-        lastRequestTime = now;
-        */
 
-        const apiKey = process.env.GEMINI_API_KEY?.trim();
-        if (!apiKey) {
-            return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
+        // 2. Check Cache (Rate Limiting logic)
+        // Check if we have an insight generated today
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const cachedInsight = await prisma.aIInsight.findFirst({
+            where: {
+                createdAt: {
+                    gte: startOfDay,
+                    lte: endOfDay,
+                },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        const { searchParams } = new URL(req.url);
+        const forceRefresh = searchParams.get("refresh") === "true";
+
+        if (cachedInsight && !forceRefresh) {
+            console.log("Serving cached AI insight");
+            return NextResponse.json(cachedInsight.content);
         }
 
-        // 1. Fetch Data
-        const today = new Date();
-        const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const fourteenDaysAgo = new Date(today);
-        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        // 3. Fetch Summarized Data from Database
+        const [
+            totalRevenueAgg,
+            totalOrders,
+            products,
+            lowStockProducts,
+            orderItems
+        ] = await Promise.all([
+            prisma.order.aggregate({
+                _sum: { total: true },
+            }),
+            prisma.order.count(),
+            prisma.product.findMany({
+                include: {
+                    category: true
+                }
+            }),
+            prisma.product.findMany({
+                where: { stock: { lt: 10 } },
+                select: { name: true, stock: true },
+            }),
+            prisma.orderItem.groupBy({
+                by: ['productId'],
+                _sum: {
+                    quantity: true,
+                    total: true
+                },
+                orderBy: {
+                    _sum: {
+                        quantity: 'desc'
+                    }
+                }
+            })
+        ]);
 
-        // Fetch Orders
-        const thisWeekOrders = await prisma.order.findMany({
-            where: { createdAt: { gte: sevenDaysAgo } },
-            include: { items: { include: { product: true } } },
-        });
+        const totalRevenue = totalRevenueAgg._sum.total || 0;
 
-        const lastWeekOrders = await prisma.order.findMany({
-            where: { createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } },
-        });
-
-        const allProducts = await prisma.product.findMany();
-
-        // 2. Summarize Data for AI
-        const thisWeekRevenue = thisWeekOrders.reduce((sum, o) => sum + Number(o.total), 0);
-        const lastWeekRevenue = lastWeekOrders.reduce((sum, o) => sum + Number(o.total), 0);
-        const revenueGrowth = lastWeekOrders.length > 0
-            ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100
-            : 100;
-
-        const productSales: Record<string, number> = {};
-        const productRevenue: Record<string, number> = {};
-
-        thisWeekOrders.forEach(order => {
-            order.items.forEach(item => {
-                const pid = item.productId;
-                productSales[pid] = (productSales[pid] || 0) + item.quantity;
-                productRevenue[pid] = (productRevenue[pid] || 0) + Number(item.total);
+        // Process best selling and slow moving from orderItems and products
+        const productSalesMap = new Map();
+        orderItems.forEach(item => {
+            productSalesMap.set(item.productId, {
+                quantity: item._sum.quantity || 0,
+                revenue: item._sum.total || 0
             });
         });
 
-        const topProducts = allProducts
-            .map(p => ({
+        const productsWithSales = products.map(p => {
+            const sales = productSalesMap.get(p.id) || { quantity: 0, revenue: 0 };
+            return {
                 name: p.name,
-                sales: productSales[p.id] || 0,
-                revenue: productRevenue[p.id] || 0,
-                stock: p.stock
-            }))
-            .sort((a, b) => b.sales - a.sales)
-            .slice(0, 10);
-
-        const lowStockProducts = allProducts
-            .filter(p => p.stock < 10)
-            .map(p => ({ name: p.name, stock: p.stock }));
-
-        // 3. Construct Prompt
-        const genAI = new GoogleGenerativeAI(apiKey);
-
-        // Use gemini-1.5-flash as it is the most stable and cost-effective model for this use case
-        const modelsToTry = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
-        let model = null;
-        let result = null;
-        let lastError = null;
-
-        const prompt = `
-        Analyze this POS system sales data and provide business insights in STRICT JSON format.
-        
-        Data Summary:
-        - Total Revenue (This Week): ${thisWeekRevenue}
-        - Total Revenue (Last Week): ${lastWeekRevenue}
-        - Total Orders (This Week): ${thisWeekOrders.length}
-        - Top Selling Products: ${JSON.stringify(topProducts)}
-        - Low Stock Items: ${JSON.stringify(lowStockProducts)}
-
-        Required JSON Structure:
-        {
-          "bestSelling": [{ "name": string, "totalSold": number, "revenue": number }],
-          "slowMoving": [{ "name": string, "totalSold": number, "stock": number }],
-          "restock": [{ "name": string, "stock": number, "avgDailySales": number, "daysUntilOut": number }],
-          "summary": "A concise, actionable business summary (max 2 sentences). Mention key trends and urgent actions."
-        }
-
-        Rules:
-        - "bestSelling": Top 3 performing products.
-        - "slowMoving": Identify products with low sales but high stock.
-        - "restock": Prioritize low stock items with high sales velocity.
-        - Output ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
-        `;
-
-        // 4. Call AI with Fallback
-        for (const modelName of modelsToTry) {
-            try {
-                console.log(`Attempting to generate insights using model: ${modelName}`);
-                model = genAI.getGenerativeModel({ model: modelName });
-                result = await model.generateContent(prompt);
-                break; // If successful, exit loop
-            } catch (error) {
-                console.warn(`Failed with model ${modelName}:`, error);
-                lastError = error;
-                // Continue to next model
-            }
-        }
-
-        if (!result) {
-            console.error("All models failed. Last error:", lastError);
-            throw lastError || new Error("Failed to generate content with available models");
-        }
-
-        const response = await result.response;
-        const text = response.text();
-
-        // 5. Parse and Return
-        let jsonResponse;
-        try {
-            // Remove markdown code blocks if present
-            const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
-            jsonResponse = JSON.parse(cleanText);
-        } catch (e) {
-            console.error("Failed to parse AI response:", text);
-            throw new Error("Invalid AI response");
-        }
-
-        // Add calculated standard metrics that AI might not calculate perfectly
-        return NextResponse.json({
-            ...jsonResponse,
-            thisWeekRevenue,
-            lastWeekRevenue,
-            revenueGrowth: Math.round(revenueGrowth * 10) / 10,
+                category: p.category.name,
+                stock: p.stock,
+                salesQuantity: sales.quantity,
+                salesRevenue: sales.revenue
+            };
         });
 
-    } catch (error) {
-        console.error("AI Insights error:", error);
-        return NextResponse.json(
-            {
-                error: "Failed to generate insights.",
-                details: error instanceof Error ? error.message : "Unknown error"
+        // Sort for Gemini context
+        const bestSelling = [...productsWithSales].sort((a, b) => Number(b.salesQuantity) - Number(a.salesQuantity)).slice(0, 5);
+        const slowMoving = [...productsWithSales].sort((a, b) => Number(a.salesQuantity) - Number(b.salesQuantity)).slice(0, 5);
+
+        // Prepare Data for Gemini
+        const dataForAI = {
+            totalRevenue,
+            totalOrders,
+            lowStock: lowStockProducts,
+            bestSellingCandidates: bestSelling,
+            slowMovingCandidates: slowMoving
+        };
+
+        // 4. Generate AI Insight
+        const prompt = `
+      Analyze this POS sales data and return business insights.
+      Data: ${JSON.stringify(dataForAI, null, 2)}
+
+      Return ONLY valid JSON. Do not include markdown, explanation, or text outside JSON.
+      Expected format:
+      {
+        "bestSelling": [{ "name": "Product Name", "insight": "Why it's selling well" }],
+        "slowMoving": [{ "name": "Product Name", "insight": "Why it's slow/Action to take" }],
+        "restock": [{ "name": "Product Name", "stock": 5, "urgency": "High/Medium" }],
+        "summary": "A concise executive summary of business performance today."
+      }
+    `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let text = response.text();
+
+        // Clean response (remove markdown code blocks if present)
+        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+        let jsonResponse;
+        try {
+            jsonResponse = JSON.parse(text);
+        } catch (e) {
+            console.error("Failed to parse Gemini response:", text);
+            return NextResponse.json(
+                { error: "Failed to parse AI response" },
+                { status: 500 }
+            );
+        }
+
+        // 5. Save to Database
+        await prisma.aIInsight.create({
+            data: {
+                content: jsonResponse,
             },
+        });
+
+        return NextResponse.json(jsonResponse);
+
+    } catch (error) {
+        console.error("Error generating AI insights:", error);
+        return NextResponse.json(
+            { error: "Internal Server Error" },
             { status: 500 }
         );
     }

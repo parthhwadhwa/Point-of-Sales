@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { checkoutSchema } from "@/lib/validations";
 import { generateOrderNumber } from "@/lib/utils";
-import { Prisma } from "@prisma/client";
+import { Prisma, PaymentMethod } from "@prisma/client";
 
 export async function POST(request: Request) {
     try {
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
                         tax,
                         discount,
                         total,
-                        paymentMethod,
+                        paymentMethod: paymentMethod as PaymentMethod,
                         cashierId: user.id,
                         items: {
                             create: items.map((item) => ({

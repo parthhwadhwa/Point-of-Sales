@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         lastRequestTime = now;
         */
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.GEMINI_API_KEY?.trim();
         if (!apiKey) {
             return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
         }
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
         const genAI = new GoogleGenerativeAI(apiKey);
 
         // Use gemini-1.5-flash as it is the most stable and cost-effective model for this use case
-        const modelsToTry = ["gemini-1.5-flash"];
+        const modelsToTry = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
         let model = null;
         let result = null;
         let lastError = null;

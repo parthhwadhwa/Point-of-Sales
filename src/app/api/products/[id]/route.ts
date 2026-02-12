@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { productSchema } from "@/lib/validations";
 
+export const dynamic = "force-dynamic";
+
 export async function PUT(
     request: Request,
     { params }: { params: Promise<{ id: string }> }

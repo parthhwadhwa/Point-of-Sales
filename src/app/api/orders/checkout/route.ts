@@ -5,6 +5,8 @@ import { checkoutSchema } from "@/lib/validations";
 import { generateOrderNumber } from "@/lib/utils";
 import { Prisma, PaymentMethod } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
     try {
         const user = await getAuthUser();

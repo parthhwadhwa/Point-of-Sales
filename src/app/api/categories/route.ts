@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { categorySchema } from "@/lib/validations";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
     try {
         const user = await getAuthUser();

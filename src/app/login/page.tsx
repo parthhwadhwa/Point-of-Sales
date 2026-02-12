@@ -131,7 +131,7 @@ export default function LoginPage() {
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="admin@pos.com"
+                                placeholder="name@company.com"
                                 required
                                 className="input"
                             />
@@ -190,25 +190,7 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                {/* Demo Credentials */}
-                <div
-                    style={{
-                        marginTop: 20,
-                        background: "var(--accent-light)",
-                        borderRadius: 16,
-                        padding: "16px 20px",
-                        border: "1px solid var(--accent-soft)",
-                    }}
-                >
-                    <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", marginBottom: 8 }}>
-                        Demo Credentials
-                    </p>
-                    <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                        <strong style={{ color: "var(--text-primary)" }}>Admin:</strong> admin@pos.com / admin123
-                        <br />
-                        <strong style={{ color: "var(--text-primary)" }}>Cashier:</strong> cashier@pos.com / cashier123
-                    </p>
-                </div>
+
             </div>
         </div>
     );

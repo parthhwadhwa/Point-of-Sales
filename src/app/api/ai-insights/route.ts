@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { formatCurrency } from "@/lib/utils";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// Simple in-memory rate limiting (per server instance)
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 10000; // 10 seconds
 
 export async function GET(request: Request) {
     try {
@@ -13,130 +17,132 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now);
+        // Basic Rate Limiting
+        const now = Date.now();
+        if (now - lastRequestTime < MIN_REQUEST_INTERVAL) {
+            return NextResponse.json(
+                { error: "Too many requests. Please wait a moment." },
+                { status: 429 }
+            );
+        }
+        lastRequestTime = now;
+
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
+        }
+
+        // 1. Fetch Data
+        const today = new Date();
+        const thirtyDaysAgo = new Date(today);
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const sevenDaysAgo = new Date(now);
+        const sevenDaysAgo = new Date(today);
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const fourteenDaysAgo = new Date(now);
+        const fourteenDaysAgo = new Date(today);
         fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-        // --- Best Selling Products (last 30 days) ---
-        const orderItems = await prisma.orderItem.findMany({
-            where: { order: { createdAt: { gte: thirtyDaysAgo } } },
-            include: { product: true },
-        });
-
-        const productSales: Record<string, { name: string; totalSold: number; revenue: number }> = {};
-        for (const item of orderItems) {
-            const pid = item.productId;
-            if (!productSales[pid]) {
-                productSales[pid] = { name: item.product.name, totalSold: 0, revenue: 0 };
-            }
-            productSales[pid].totalSold += item.quantity;
-            productSales[pid].revenue += Number(item.total);
-        }
-
-        const bestSelling = Object.values(productSales)
-            .sort((a, b) => b.totalSold - a.totalSold)
-            .slice(0, 5)
-            .map((p) => ({
-                name: p.name,
-                totalSold: p.totalSold,
-                revenue: Math.round(p.revenue * 100) / 100,
-            }));
-
-        // --- Slow Moving Products ---
-        const allProducts = await prisma.product.findMany();
-        const soldProductIds = new Set(Object.keys(productSales));
-
-        const slowMoving = allProducts
-            .filter((p) => {
-                const sales = productSales[p.id];
-                return !sales || sales.totalSold <= 2;
-            })
-            .slice(0, 5)
-            .map((p) => ({
-                name: p.name,
-                totalSold: productSales[p.id]?.totalSold || 0,
-                stock: p.stock,
-            }));
-
-        // --- Revenue Trends ---
+        // Fetch Orders
         const thisWeekOrders = await prisma.order.findMany({
             where: { createdAt: { gte: sevenDaysAgo } },
-        });
-        const lastWeekOrders = await prisma.order.findMany({
-            where: {
-                createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo },
-            },
+            include: { items: { include: { product: true } } },
         });
 
+        const lastWeekOrders = await prisma.order.findMany({
+            where: { createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } },
+        });
+
+        const allProducts = await prisma.product.findMany();
+
+        // 2. Summarize Data for AI
         const thisWeekRevenue = thisWeekOrders.reduce((sum, o) => sum + Number(o.total), 0);
         const lastWeekRevenue = lastWeekOrders.reduce((sum, o) => sum + Number(o.total), 0);
+        const revenueGrowth = lastWeekOrders.length > 0
+            ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100
+            : 100;
 
-        const revenueGrowth =
-            lastWeekRevenue > 0
-                ? Math.round(((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100 * 100) / 100
-                : thisWeekRevenue > 0
-                    ? 100
-                    : 0;
+        const productSales: Record<string, number> = {};
+        const productRevenue: Record<string, number> = {};
 
-        // --- Restock Suggestions ---
-        const LOW_STOCK_THRESHOLD = 10;
-        const daysInPeriod = 30;
+        thisWeekOrders.forEach(order => {
+            order.items.forEach(item => {
+                const pid = item.productId;
+                productSales[pid] = (productSales[pid] || 0) + item.quantity;
+                productRevenue[pid] = (productRevenue[pid] || 0) + Number(item.total);
+            });
+        });
 
-        const restock = allProducts
-            .filter((p) => {
-                const sales = productSales[p.id];
-                const avgDailySales = sales ? sales.totalSold / daysInPeriod : 0;
-                const daysUntilOut = avgDailySales > 0 ? p.stock / avgDailySales : 999;
-                return p.stock < LOW_STOCK_THRESHOLD || daysUntilOut < 7;
-            })
-            .map((p) => {
-                const sales = productSales[p.id];
-                const avgDailySales = sales ? Math.round((sales.totalSold / daysInPeriod) * 100) / 100 : 0;
-                const daysUntilOut = avgDailySales > 0 ? Math.round(p.stock / avgDailySales) : 999;
-                return {
-                    name: p.name,
-                    stock: p.stock,
-                    avgDailySales,
-                    daysUntilOut,
-                };
-            })
-            .sort((a, b) => a.daysUntilOut - b.daysUntilOut)
-            .slice(0, 5);
+        const topProducts = allProducts
+            .map(p => ({
+                name: p.name,
+                sales: productSales[p.id] || 0,
+                revenue: productRevenue[p.id] || 0,
+                stock: p.stock
+            }))
+            .sort((a, b) => b.sales - a.sales)
+            .slice(0, 10);
 
-        // --- Generate Summary ---
-        const totalProducts = allProducts.length;
-        const totalOrdersThisWeek = thisWeekOrders.length;
-        const lowStockCount = allProducts.filter((p) => p.stock < LOW_STOCK_THRESHOLD).length;
+        const lowStockProducts = allProducts
+            .filter(p => p.stock < 10)
+            .map(p => ({ name: p.name, stock: p.stock }));
 
-        let trendText = "";
-        if (revenueGrowth > 0) {
-            trendText = `Revenue is up ${revenueGrowth}% compared to last week.`;
-        } else if (revenueGrowth < 0) {
-            trendText = `Revenue is down ${Math.abs(revenueGrowth)}% compared to last week.`;
-        } else {
-            trendText = "Revenue is stable compared to last week.";
+        // 3. Construct Prompt
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `
+        Analyze this POS system sales data and provide business insights in STRICT JSON format.
+        
+        Data Summary:
+        - Total Revenue (This Week): ${thisWeekRevenue}
+        - Total Revenue (Last Week): ${lastWeekRevenue}
+        - Total Orders (This Week): ${thisWeekOrders.length}
+        - Top Selling Products: ${JSON.stringify(topProducts)}
+        - Low Stock Items: ${JSON.stringify(lowStockProducts)}
+
+        Required JSON Structure:
+        {
+          "bestSelling": [{ "name": string, "totalSold": number, "revenue": number }],
+          "slowMoving": [{ "name": string, "totalSold": number, "stock": number }], // Infer based on low/zero sales
+          "restock": [{ "name": string, "stock": number, "avgDailySales": number, "daysUntilOut": number }],
+          "summary": "A concise, actionable business summary (max 2 sentences). Mention key trends and urgent actions."
         }
 
-        const summary = `Your store has ${totalProducts} products with ${totalOrdersThisWeek} orders this week generating ${formatCurrency(thisWeekRevenue)} in revenue. ${trendText} ${lowStockCount} product(s) need restocking soon.${bestSelling.length > 0
-            ? ` Top seller: ${bestSelling[0].name} with ${bestSelling[0].totalSold} units sold.`
-            : ""
-            }`;
+        Rules:
+        - "bestSelling": Top 3 performing products.
+        - "slowMoving": Identify products with low sales but high stock (you may need to infer this if not explicitly in top list, or just return empty if insufficient data).
+        - "restock": Prioritize low stock items with high sales velocity. Calculate daysUntilOut based on sales.
+        - Output ONLY valid JSON. Do not include markdown formatting like \`\`\`json.
+        `;
 
+        // 4. Call AI
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        // 5. Parse and Return
+        let jsonResponse;
+        try {
+            // Remove markdown code blocks if present
+            const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+            jsonResponse = JSON.parse(cleanText);
+        } catch (e) {
+            console.error("Failed to parse AI response:", text);
+            throw new Error("Invalid AI response");
+        }
+
+        // Add calculated standard metrics that AI might not calculate perfectly
         return NextResponse.json({
-            bestSelling,
-            slowMoving,
-            restock,
-            revenueGrowth,
-            thisWeekRevenue: Math.round(thisWeekRevenue * 100) / 100,
-            lastWeekRevenue: Math.round(lastWeekRevenue * 100) / 100,
-            summary,
+            ...jsonResponse,
+            thisWeekRevenue,
+            lastWeekRevenue,
+            revenueGrowth: Math.round(revenueGrowth * 10) / 10,
         });
+
     } catch (error) {
         console.error("AI Insights error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+            { error: "Failed to generate insights" },
+            { status: 500 }
+        );
     }
 }

@@ -17,11 +17,23 @@ export default function InsightsPage() {
     const [data, setData] = useState<AiInsights | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+    const fetchData = () => {
+        setLoading(true);
         fetch("/api/ai-insights")
             .then((r) => r.json())
-            .then(setData)
+            .then((data) => {
+                if (data.error) {
+                    alert(data.error); // Simple error feedback
+                } else {
+                    setData(data);
+                }
+            })
+            .catch((err) => console.error(err))
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        fetchData();
     }, []);
 
     if (loading) {
@@ -42,9 +54,19 @@ export default function InsightsPage() {
 
     return (
         <div>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.03em", marginBottom: 4 }}>
-                AI Insights
-            </h1>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
+                    AI Insights
+                </h1>
+                <button
+                    onClick={fetchData}
+                    disabled={loading}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 13 }}
+                >
+                    {loading ? "Analyzing..." : "Refresh Analysis ↻"}
+                </button>
+            </div>
             <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 28 }}>
                 Powered by custom analytics engine — no paid APIs
             </p>

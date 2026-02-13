@@ -123,13 +123,15 @@ export async function GET(req: NextRequest) {
       Analyze this POS sales data and return business insights.
       Data: ${JSON.stringify(dataForAI, null, 2)}
 
+      IMPORTANT: Format ALL monetary values in Indian Rupee (INR) using the '₹' symbol.
+
       Return ONLY valid JSON. Do not include markdown, explanation, or text outside JSON.
       Expected format:
       {
         "bestSelling": [{ "name": "Product Name", "insight": "Why it's selling well" }],
         "slowMoving": [{ "name": "Product Name", "insight": "Why it's slow/Action to take" }],
         "restock": [{ "name": "Product Name", "stock": 5, "urgency": "High/Medium" }],
-        "summary": "A concise executive summary of business performance today."
+        "summary": "A concise executive summary of business performance today. Use '₹' for all currency values."
       }
     `;
 

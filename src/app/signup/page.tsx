@@ -9,6 +9,7 @@ export default function SignupPage() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [role, setRole] = useState("CASHIER");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
@@ -22,7 +23,7 @@ export default function SignupPage() {
             const res = await fetch("/api/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password }),
+                body: JSON.stringify({ name, email, password, role }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -180,6 +181,52 @@ export default function SignupPage() {
                                 required
                                 className="input"
                             />
+                        </div>
+
+                        <div style={{ marginBottom: 28 }}>
+                            <label
+                                style={{
+                                    display: "block",
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    color: "var(--text-primary)",
+                                    marginBottom: 12,
+                                }}
+                            >
+                                Role
+                            </label>
+                            <div style={{ display: "flex", gap: 12 }}>
+                                {["CASHIER", "ADMIN"].map((r) => (
+                                    <label
+                                        key={r}
+                                        style={{
+                                            flex: 1,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            padding: "10px",
+                                            borderRadius: 12,
+                                            border: `1px solid ${role === r ? "var(--accent)" : "var(--border)"}`, // Fixed: corrected template literal syntax
+                                            background: role === r ? "var(--accent-light)" : "transparent",
+                                            color: role === r ? "var(--accent)" : "var(--text-secondary)",
+                                            fontWeight: 600,
+                                            fontSize: 13,
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                        }}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="role"
+                                            value={r}
+                                            checked={role === r}
+                                            onChange={(e) => setRole(e.target.value)}
+                                            style={{ display: "none" }}
+                                        />
+                                        {r.charAt(0) + r.slice(1).toLowerCase()}
+                                    </label>
+                                ))}
+                            </div>
                         </div>
 
                         <button
